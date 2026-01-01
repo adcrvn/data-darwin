@@ -1,0 +1,37 @@
+// Radar sensor reading from binary packet format
+model RadarReading {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  
+  // Header fields
+  version          Int
+  packet_length    Int
+  rx_mac           String
+  room_id          Int
+  building_id      Int
+  seq_number       BigInt
+  csi_counter      BigInt
+  timestamp_ms     BigInt
+  
+  // Signal information
+  rssi             Int
+  channel          Int
+  csi_len          Int
+  
+  // Radar targets from all sensors (array of sensor data, each with array of targets)
+  // Structure: [{ sensor_0: [target1, target2, target3] }, { sensor_1: [...] }, ...]
+  radar_targets    Json
+  
+  // CSI Data (complex I/Q samples)
+  csi_data         Json
+  
+  // Metadata
+  created_at       DateTime @default(now()) @db.Timestamptz(6)
+  received_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([rx_mac])
+  @@index([timestamp_ms])
+  @@index([room_id])
+  @@index([building_id])
+  @@index([seq_number])
+  @@map("radar_readings")
+}

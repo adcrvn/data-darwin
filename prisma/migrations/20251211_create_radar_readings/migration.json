@@ -1,0 +1,27 @@
+{
+  "version": "6.19.0",
+  "steps": [
+    {
+      "action": "CreateTable",
+      "table": "radar_readings",
+      "columns": [
+        { "name": "id", "type": "Uuid", "isNullable": false },
+        { "name": "version", "type": "Integer", "isNullable": false },
+        { "name": "packet_length", "type": "Integer", "isNullable": false },
+        { "name": "rx_mac", "type": "Text", "isNullable": false },
+        { "name": "room_id", "type": "Integer", "isNullable": false },
+        { "name": "building_id", "type": "Integer", "isNullable": false },
+        { "name": "seq_number", "type": "BigInt", "isNullable": false },
+        { "name": "csi_counter", "type": "BigInt", "isNullable": false },
+        { "name": "timestamp_ms", "type": "BigInt", "isNullable": false },
+        { "name": "rssi", "type": "Integer", "isNullable": false },
+        { "name": "channel", "type": "Integer", "isNullable": false },
+        { "name": "csi_len", "type": "Integer", "isNullable": false },
+        { "name": "radar_targets", "type": "Json", "isNullable": false },
+        { "name": "csi_data", "type": "Json", "isNullable": false },
+        { "name": "created_at", "type": "DateTime", "isNullable": false },
+        { "name": "received_at", "type": "DateTime", "isNullable": false }
+      ]
+    }
+  ]
+}
