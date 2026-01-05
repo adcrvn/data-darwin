@@ -7,8 +7,9 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const fileName = searchParams.get('name');
+  const searchParams = request.nextUrl.searchParams;
+  const fileNameParam = searchParams.get('name');
+  const fileName = fileNameParam ? fileNameParam.trim() : null;
     const latest = searchParams.get('latest') === 'true';
     const download = searchParams.get('download') === 'true';
     const limit = parseInt(searchParams.get('limit') || '50');
@@ -18,16 +19,20 @@ export async function GET(request: NextRequest) {
     if (latest) {
       let latestFile = null;
       if (fileName) {
+        const normalizedRequestedName = fileName.toLowerCase();
+        const baseRequestedName = normalizedRequestedName.replace(/\.bin$/, '');
         // Find the most recent file for the specified device (Transmitter_AP or Receiver_ST)
         // Files are sorted by created_at DESC, so first match is the latest
         const allFiles = await listBinFiles(100, 0);
         latestFile = allFiles.find(f => {
           // Prefer exact projectName match (more reliable)
-          if (f.projectName?.toLowerCase() === fileName.toLowerCase()) {
+          if (f.projectName?.toLowerCase() === baseRequestedName) {
             return true;
           }
           // Fallback: check if filename starts with the device name
-          return f.name.toLowerCase().startsWith(fileName.toLowerCase() + '_');
+          const fileNameLower = f.name.toLowerCase();
+          return fileNameLower.startsWith(baseRequestedName + '_') ||
+            fileNameLower === `${baseRequestedName}.bin`;
         });
       } else {
         latestFile = await getLatestBinFile();
