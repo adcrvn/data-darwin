@@ -1,0 +1,35 @@
+# Copy this file to terraform.tfvars and update with your values
+# cp terraform.tfvars.example terraform.tfvars
+
+# AWS Configuration
+aws_region = "us-east-1"
+environment = "prod"
+project_name = "smarthome-radar"
+
+# Network Configuration
+vpc_cidr = "10.0.0.0/16"
+availability_zones = ["us-east-1a", "us-east-1b"]  # ALB requires 2 AZs minimum
+
+# Compute Configuration
+instance_type = "t3.small"  # Options: t3.micro, t3.small, t3.medium
+
+# Auto Scaling Configuration
+asg_min_size = 1
+asg_max_size = 1
+asg_desired_capacity = 1
+
+# ECR Configuration
+ecr_repository_name = "smarthome-radar-api"
+container_image_tag = "latest"
+
+# Health Check
+health_check_path = "/api/healthz"
+
+# SSL Certificate (optional)
+# Uncomment and add your ACM certificate ARN for HTTPS
+# ssl_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/12345678-1234-1234-1234-123456789012"
+
+# Security (optional)
+# Restrict access to specific IP ranges
+# allowed_cidr_blocks = ["1.2.3.4/32", "5.6.7.8/32"]
+allowed_cidr_blocks = ["0.0.0.0/0"]
