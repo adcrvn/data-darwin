@@ -35,6 +35,47 @@ module "iam" {
   aws_account_id = data.aws_caller_identity.current.account_id
 }
 
+# RDS Module
+module "rds" {
+  source = "./modules/rds"
+
+  project_name            = var.project_name
+  vpc_id                  = module.vpc.vpc_id
+  private_subnet_ids      = module.vpc.private_subnet_ids
+  allowed_security_groups = [aws_security_group.ec2.id]
+
+  # Database Configuration
+  db_name         = var.db_name
+  master_username = var.db_master_username
+  master_password = var.db_master_password
+
+  # Instance Configuration
+  engine_version = var.db_engine_version
+  instance_class = var.db_instance_class
+
+  # Storage Configuration
+  allocated_storage     = var.db_allocated_storage
+  max_allocated_storage = var.db_max_allocated_storage
+  storage_encrypted     = var.db_storage_encrypted
+
+  # High Availability
+  multi_az = var.db_multi_az
+
+  # Backup Configuration
+  backup_retention_period = var.db_backup_retention_period
+  skip_final_snapshot     = var.db_skip_final_snapshot
+
+  # Monitoring
+  performance_insights_enabled = var.db_performance_insights_enabled
+  monitoring_interval          = var.db_monitoring_interval
+
+  # Protection
+  deletion_protection = var.db_deletion_protection
+
+  # Read Replica
+  create_read_replica = var.db_create_read_replica
+}
+
 # ECR Repository
 resource "aws_ecr_repository" "app" {
   name                 = var.ecr_repository_name

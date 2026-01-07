@@ -52,3 +52,42 @@ output "api_endpoint" {
   description = "API endpoint URL"
   value       = "http://${aws_lb.main.dns_name}"
 }
+
+# ==================== RDS Database Outputs ====================
+
+output "db_instance_id" {
+  description = "RDS instance ID"
+  value       = module.rds.db_instance_id
+}
+
+output "db_instance_endpoint" {
+  description = "RDS instance endpoint (host:port)"
+  value       = module.rds.db_instance_endpoint
+}
+
+output "db_instance_address" {
+  description = "RDS instance hostname"
+  value       = module.rds.db_instance_address
+}
+
+output "db_name" {
+  description = "Database name"
+  value       = module.rds.db_name
+}
+
+output "database_url" {
+  description = "DATABASE_URL for Prisma (use this in your .env file)"
+  value       = module.rds.database_url
+  sensitive   = true
+}
+
+output "direct_url" {
+  description = "DIRECT_URL for Prisma migrations (use this in your .env file)"
+  value       = module.rds.direct_url
+  sensitive   = true
+}
+
+output "read_replica_endpoint" {
+  description = "Read replica endpoint (if created)"
+  value       = module.rds.read_replica_endpoint
+}

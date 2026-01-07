@@ -81,3 +81,95 @@ variable "allowed_cidr_blocks" {
   type        = list(string)
   default     = ["0.0.0.0/0"]
 }
+
+# ==================== RDS Database Variables ====================
+
+variable "db_name" {
+  description = "Name of the database to create"
+  type        = string
+  default     = "smarthome_api"
+}
+
+variable "db_master_username" {
+  description = "Master username for RDS"
+  type        = string
+  default     = "postgres"
+}
+
+variable "db_master_password" {
+  description = "Master password for RDS (use environment variable or secrets manager)"
+  type        = string
+  sensitive   = true
+}
+
+variable "db_engine_version" {
+  description = "PostgreSQL engine version"
+  type        = string
+  default     = "16.1"
+}
+
+variable "db_instance_class" {
+  description = "RDS instance class"
+  type        = string
+  default     = "db.t3.micro"
+}
+
+variable "db_allocated_storage" {
+  description = "Allocated storage in GB"
+  type        = number
+  default     = 20
+}
+
+variable "db_max_allocated_storage" {
+  description = "Maximum storage for autoscaling in GB (0 to disable)"
+  type        = number
+  default     = 100
+}
+
+variable "db_storage_encrypted" {
+  description = "Enable storage encryption"
+  type        = bool
+  default     = true
+}
+
+variable "db_multi_az" {
+  description = "Enable Multi-AZ deployment for high availability"
+  type        = bool
+  default     = false
+}
+
+variable "db_backup_retention_period" {
+  description = "Backup retention period in days (0-35)"
+  type        = number
+  default     = 7
+}
+
+variable "db_skip_final_snapshot" {
+  description = "Skip final snapshot when destroying database"
+  type        = bool
+  default     = false
+}
+
+variable "db_performance_insights_enabled" {
+  description = "Enable Performance Insights"
+  type        = bool
+  default     = false
+}
+
+variable "db_monitoring_interval" {
+  description = "Enhanced monitoring interval in seconds (0, 1, 5, 10, 15, 30, 60)"
+  type        = number
+  default     = 0
+}
+
+variable "db_deletion_protection" {
+  description = "Enable deletion protection"
+  type        = bool
+  default     = true
+}
+
+variable "db_create_read_replica" {
+  description = "Create a read replica"
+  type        = bool
+  default     = false
+}
