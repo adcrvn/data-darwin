@@ -283,6 +283,18 @@ resource "aws_launch_template" "main" {
     project_name        = var.project_name
   }))
 
+  # Increase root volume size for Docker images
+  block_device_mappings {
+    device_name = "/dev/xvda"
+
+    ebs {
+      volume_size           = 20  # GB - increased from default 8GB for Docker images
+      volume_type           = "gp3"
+      delete_on_termination = true
+      encrypted             = true
+    }
+  }
+
   metadata_options {
     http_endpoint               = "enabled"
     http_tokens                 = "required"
