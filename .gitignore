@@ -41,6 +41,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# prisma generated files
+prisma/combined-schema.prisma
+
 # test binary files
 test-data/*.bin
 test-data/downloaded*.bin
@@ -59,3 +62,17 @@ test-data/downloaded*.bin
 # OS
 .DS_Store
 Thumbs.db
+
+# Terraform
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/*.tfvars
+!terraform/terraform.tfvars.example
+terraform/.terraform.tfstate.lock.info
+terraform/crash.log
+terraform/override.tf
+terraform/override.tf.json
+terraform/*_override.tf
+terraform/*_override.tf.json

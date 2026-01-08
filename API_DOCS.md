@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Binary Files API provides endpoints for uploading, listing, and downloading binary firmware files (OTA updates) to/from Supabase Storage. The API automatically extracts version information and project names from ESP32 OTA binary files.
+The Binary Files API provides endpoints for uploading, listing, and downloading binary firmware files (OTA updates) to/from AWS S3. The API automatically extracts version information and project names from ESP32 OTA binary files.
 
 **Base URL:** `http://your-domain.com/api/bin-files`
 
@@ -12,7 +12,7 @@ The Binary Files API provides endpoints for uploading, listing, and downloading 
 
 ### 1. Upload Binary File
 
-Upload a binary file to Supabase Storage with automatic metadata extraction.
+Upload a binary file to AWS S3 with automatic metadata extraction.
 
 **Endpoint:** `POST /api/bin-files/upload`
 
