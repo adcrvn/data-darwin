@@ -88,6 +88,31 @@ resource "aws_iam_role_policy" "cloudwatch_logs" {
   })
 }
 
+# Policy for S3 access (radar data and firmware storage)
+resource "aws_iam_role_policy" "s3_access" {
+  name = "${var.project_name}-s3-access"
+  role = aws_iam_role.ec2_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          var.s3_bucket_arn,
+          "${var.s3_bucket_arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
 # Instance Profile
 resource "aws_iam_instance_profile" "ec2_profile" {
   name = "${var.project_name}-ec2-profile"

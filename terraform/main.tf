@@ -33,6 +33,7 @@ module "iam" {
   project_name   = var.project_name
   aws_region     = var.aws_region
   aws_account_id = data.aws_caller_identity.current.account_id
+  s3_bucket_arn  = aws_s3_bucket.radar_data.arn
 }
 
 # RDS Module
@@ -298,7 +299,7 @@ resource "aws_launch_template" "main" {
   metadata_options {
     http_endpoint               = "enabled"
     http_tokens                 = "required"
-    http_put_response_hop_limit = 1
+    http_put_response_hop_limit = 2  # Allow Docker containers to access IMDS
   }
 
   monitoring {

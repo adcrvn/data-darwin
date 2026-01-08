@@ -91,3 +91,15 @@ output "read_replica_endpoint" {
   description = "Read replica endpoint (if created)"
   value       = module.rds.read_replica_endpoint
 }
+
+# ==================== S3 Storage Outputs ====================
+
+output "s3_bucket_name" {
+  description = "S3 bucket name for radar data storage"
+  value       = aws_s3_bucket.radar_data.id
+}
+
+output "s3_bucket_arn" {
+  description = "S3 bucket ARN"
+  value       = aws_s3_bucket.radar_data.arn
+}

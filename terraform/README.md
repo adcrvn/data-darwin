@@ -3,12 +3,16 @@
 This Terraform configuration deploys the SmartHome Radar API to AWS with the following architecture:
 
 - **VPC** with public and private subnets across 2 AZs
-- **Application Load Balancer** (ALB) in public subnets
+- **Application Load Balancer** (ALB) in public subnets with HTTPS
 - **Auto Scaling Group** (ASG) with EC2 instances in private subnets (min/max/desired = 1)
+- **RDS PostgreSQL** (Multi-AZ) for database
+- **S3 bucket** for CSV and binary file storage with lifecycle policies
 - **ECR** repository for Docker images
-- **NAT Gateways** for private subnet internet access
-- **IAM roles** for EC2 to access ECR and SSM Parameter Store
-- **Security Groups** for ALB and EC2 instances
+- **NAT Gateway** for private subnet internet access
+- **IAM roles** for EC2 to access ECR, SSM, S3, and CloudWatch
+- **Security Groups** for ALB, EC2, and RDS
+- **ACM certificate** for SSL/TLS (*.dar.win)
+- **Route 53** DNS records
 
 ## Prerequisites
 
@@ -34,8 +38,8 @@ This Terraform configuration deploys the SmartHome Radar API to AWS with the fol
 **Before starting, complete ALL items in [`PRE_DEPLOYMENT_CHECKLIST.md`](./PRE_DEPLOYMENT_CHECKLIST.md)**
 
 The checklist ensures:
-- ✅ Supabase buckets are created
-- ✅ Database migrations are run
+- ✅ S3 bucket is created via Terraform
+- ✅ Database migrations are run automatically via Docker
 - ✅ Environment variables are configured
 - ✅ Docker image is ready
 
@@ -89,8 +93,10 @@ cd terraform/scripts
 
 This reads your `.env` file and creates SSM parameters at:
 - `/smarthome-radar/DATABASE_URL`
-- `/smarthome-radar/SUPABASE_SERVICE_ROLE_KEY`
-- etc.
+- `/smarthome-radar/DIRECT_URL`
+- `/smarthome-radar/AWS_REGION`
+- `/smarthome-radar/S3_BUCKET_NAME`
+- `/smarthome-radar/NEXT_PUBLIC_APP_URL`
 
 **Note:** Sensitive values (keys, passwords, URLs) are automatically stored as `SecureString` type.
 
@@ -168,18 +174,18 @@ curl -X POST http://<alb-dns-name>/api/radar-data \
 ```
 Internet
    │
-   ├─→ ALB (Public Subnets in us-east-1a and us-east-1b)
+   ├─→ ALB (Public Subnets in us-east-2a and us-east-2b)
    │     │
    │     └─→ Target Group
    │            │
-   │            ├─→ EC2 Instance (Private Subnet - us-east-1a)
-   │            └─→ EC2 Instance (Private Subnet - us-east-1b)
+   │            ├─→ EC2 Instance (Private Subnet - us-east-2a)
+   │            └─→ EC2 Instance (Private Subnet - us-east-2b)
    │                   │
-   │                   └─→ Single NAT Gateway (us-east-1a) → Internet
+   │                   └─→ Single NAT Gateway (us-east-2a) → Internet
    │                           │
    │                           ├─→ ECR (Docker images)
-   │                           ├─→ Supabase PostgreSQL
-   │                           └─→ Supabase Storage
+   │                           ├─→ RDS PostgreSQL (Multi-AZ)
+   │                           └─→ S3 (CSV and binary file storage)
 ```
 
 ### Cost-Optimized 2-AZ Setup
@@ -192,22 +198,22 @@ Internet
 - Still meets AWS ALB requirements
 
 **Architecture:**
-- **2 Public Subnets** (us-east-1a, us-east-1b) → ALB + NAT Gateway (1a only)
-- **2 Private Subnets** (us-east-1a, us-east-1b) → EC2 instances (ASG)
-- **1 NAT Gateway** (us-east-1a) → Used by both private subnets
+- **2 Public Subnets** (us-east-2a, us-east-2b) → ALB + NAT Gateway (2a only)
+- **2 Private Subnets** (us-east-2a, us-east-2b) → EC2 instances (ASG)
+- **1 NAT Gateway** (us-east-2a) → Used by both private subnets
 
-**Trade-off:** If us-east-1a NAT Gateway fails, instances in both AZs lose internet access (can't pull ECR images or reach Supabase). However, they can still serve traffic through the ALB.
+**Trade-off:** If us-east-2a NAT Gateway fails, instances in both AZs lose internet access (can't pull ECR images or reach S3). However, they can still serve traffic through the ALB and access RDS (which is in the same VPC).
 
 ### Subnets
 
 - **Public Subnets**
-  - 10.0.0.0/24 (us-east-1a) - ALB + NAT Gateway
-  - 10.0.1.0/24 (us-east-1b) - ALB only
+  - 10.0.0.0/24 (us-east-2a) - ALB + NAT Gateway
+  - 10.0.1.0/24 (us-east-2b) - ALB only
 
 - **Private Subnets**
-  - 10.0.10.0/24 (us-east-1a) - EC2 instances (ASG)
-  - 10.0.11.0/24 (us-east-1b) - EC2 instances (ASG)
-  - Both route through NAT in us-east-1a
+  - 10.0.10.0/24 (us-east-2a) - EC2 instances (ASG)
+  - 10.0.11.0/24 (us-east-2b) - EC2 instances (ASG)
+  - Both route through NAT in us-east-2a
 
 ### Security Groups
 
@@ -217,7 +223,7 @@ Internet
 
 **EC2 Security Group:**
 - Inbound: 3000 (HTTP) from ALB security group only
-- Outbound: All traffic (for ECR, Supabase, internet)
+- Outbound: All traffic (for ECR, S3, RDS, internet)
 
 ### IAM Permissions
 
@@ -225,6 +231,7 @@ EC2 instances have IAM role with permissions for:
 - **ECR**: Pull Docker images
 - **SSM Parameter Store**: Read `/smarthome-radar/*` parameters
 - **CloudWatch Logs**: Write container logs
+- **S3**: Read/Write radar data bucket for CSV and binary file storage
 
 ## Configuration
 
@@ -234,7 +241,7 @@ Edit `terraform.tfvars` to customize:
 
 ```hcl
 # terraform.tfvars (create this file)
-aws_region              = "us-east-1"
+aws_region              = "us-east-2"
 environment             = "prod"
 project_name            = "smarthome-radar"
 instance_type           = "t3.small"
@@ -243,20 +250,19 @@ asg_max_size            = 1
 asg_desired_capacity    = 1
 container_image_tag     = "latest"
 
-# Optional: SSL certificate ARN for HTTPS
-# ssl_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/..."
+# SSL certificate ARN for HTTPS (created automatically via ACM)
+ssl_certificate_arn = "arn:aws:acm:us-east-2:802738533039:certificate/..."
 ```
 
 ### Environment Variables
 
 The following environment variables must be stored in SSM Parameter Store (use `setup-ssm-parameters.sh`):
 
-- `DATABASE_URL` - Supabase PostgreSQL connection string
-- `DIRECT_URL` - Supabase direct connection string
-- `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anonymous key
-- `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key (SecureString)
-- `NEXT_PUBLIC_APP_URL` - Your app URL (ALB DNS or custom domain)
+- `DATABASE_URL` - RDS PostgreSQL connection string (SecureString)
+- `DIRECT_URL` - RDS direct connection string (SecureString)
+- `AWS_REGION` - AWS region (e.g., us-east-2)
+- `S3_BUCKET_NAME` - S3 bucket name for radar data
+- `NEXT_PUBLIC_APP_URL` - Your app URL (ALB DNS or custom domain, e.g., https://io.dar.win)
 
 ## Deployment Workflow
 

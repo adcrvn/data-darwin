@@ -5,20 +5,22 @@ A Next.js API for processing and storing binary radar packet data from IoT devic
 ## Features
 
 - Binary packet processing for radar sensors (dynamic sensor count support)
-- PostgreSQL database with Prisma ORM
-- Supabase integration for database and file storage
+- PostgreSQL database with Prisma ORM (AWS RDS)
+- AWS S3 integration for CSV and binary file storage
 - **Hourly CSV storage** - Automatic CSV file generation organized by building/room/date/hour
 - TypeScript for type safety
 - Data validation with Zod
 - Parses binary data into human-readable format
 - Flexible radar target structure supporting any number of sensors
+- Deployed on AWS with Terraform infrastructure as code
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js 20+
-- PostgreSQL database (Supabase recommended)
+- PostgreSQL database (AWS RDS or local)
+- AWS account with S3 access (for production)
 - npm or yarn
 
 ### Installation
@@ -30,11 +32,17 @@ A Next.js API for processing and storing binary radar packet data from IoT devic
 npm install
 ```
 
-3. Copy `.env.example` to `.env` and fill in your Supabase credentials:
+3. Copy `.env.example` to `.env` and fill in your database and AWS credentials:
 
 ```bash
 cp .env.example .env
 ```
+
+Required environment variables:
+- `DATABASE_URL` - PostgreSQL connection string
+- `DIRECT_URL` - Direct PostgreSQL connection (for migrations)
+- `AWS_REGION` - AWS region (e.g., us-east-2)
+- `S3_BUCKET_NAME` - S3 bucket name for radar data storage
 
 4. Run database migrations:
 
@@ -54,7 +62,7 @@ The API will be available at [http://localhost:3000](http://localhost:3000)
 
 ### POST /api/radar-data
 
-Submit binary radar packet to the database. Accepts raw binary data and automatically stores it to both PostgreSQL and Supabase CSV storage.
+Submit binary radar packet to the database. Accepts raw binary data and automatically stores it to both PostgreSQL and AWS S3 CSV storage.
 
 **Request:**
 - Content-Type: `application/octet-stream`
@@ -66,8 +74,8 @@ Submit binary radar packet to the database. Accepts raw binary data and automati
 - Radar targets: N sensors × 3 targets × 13 bytes (variable length)
 - CSI data: Complex I/Q samples (2 × csi_len bytes)
 
-**Note:** Data is automatically stored to CSV files in Supabase storage at:
-`building_id/room_id/YYYY-MM-DD/HH.csv`
+**Note:** Data is automatically stored to CSV files in AWS S3 at:
+`radar-readings/building_id/room_id/YYYY-MM-DD/HH.csv`
 
 **Example using curl:**
 
@@ -114,7 +122,7 @@ curl "http://localhost:3000/api/radar-data?rx_mac=F0:F5:BD:02:FA:80"
 
 ### GET /api/csv-data
 
-Retrieve CSV files from Supabase storage or list available CSV files.
+Retrieve CSV files from AWS S3 storage or list available CSV files.
 
 **Query Parameters:**
 
@@ -157,7 +165,7 @@ timestamp_ms,rx_mac,room_id,building_id,seq_number,csi_counter,version,packet_le
 
 ## CSV Storage Structure
 
-CSV files are automatically organized in Supabase storage with the following hierarchy:
+CSV files are automatically organized in AWS S3 with the following hierarchy:
 
 ```
 radar-readings/
@@ -258,9 +266,10 @@ curl -X POST http://localhost:3000/api/radar-data \
 - **Next.js 16** - React framework
 - **TypeScript** - Type safety
 - **Prisma** - ORM for database access
-- **Supabase** - PostgreSQL database and file storage
-- **Zod** - Schema validation
-- **PostgreSQL** - Database
-- **Supabase** - Backend platform
+- **PostgreSQL (AWS RDS)** - Database
+- **AWS S3** - File storage for CSV and binary files
 - **Zod** - Runtime type validation
+- **Terraform** - Infrastructure as code
+- **Docker** - Containerization
+- **AWS EC2/ALB/ASG** - Compute and load balancing
 

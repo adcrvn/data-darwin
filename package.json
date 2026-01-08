@@ -16,8 +16,8 @@
     "db:migrate:deploy": "node scripts/combine-schemas.js && prisma migrate deploy --schema=./prisma/combined-schema.prisma"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.709.0",
     "@prisma/client": "^6.15.0",
-    "@supabase/supabase-js": "^2.56.1",
     "next": "^16.0.7",
     "prisma": "^6.15.0",
     "react": "19.1.0",

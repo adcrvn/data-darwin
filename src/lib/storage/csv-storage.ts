@@ -1,56 +1,73 @@
-import { supabase } from './supabase-storage'
+import { S3Client, GetObjectCommand, PutObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import { RadarPacket } from '@/types/radar'
 
+// S3 client configuration
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION || "us-east-2",
+});
+
+const BUCKET_NAME = process.env.S3_BUCKET_NAME || "smarthome-radar-radar-data-802738533039";
+
 /**
- * Store radar reading as CSV in Supabase storage
- * Path structure: building_id/room_id/YYYY-MM-DD/HH.csv
+ * Store radar reading as CSV in S3
+ * Path structure: radar-readings/building_id/room_id/YYYY-MM-DD/HH.csv
  */
 export async function storeRadarReadingToCSV(packet: RadarPacket): Promise<void> {
   try {
     // Use current time (received_at) for folder structure, not the packet timestamp
     const timestamp = new Date()
-    
+
     // Build path components
     const buildingId = packet.building_id.toString()
     const roomId = packet.room_id.toString()
     const date = timestamp.toISOString().split('T')[0] // YYYY-MM-DD
     const hour = timestamp.getUTCHours().toString().padStart(2, '0') // HH
-    
-    const filePath = `${buildingId}/${roomId}/${date}/${hour}.csv`
-    
+
+    const filePath = `radar-readings/${buildingId}/${roomId}/${date}/${hour}.csv`
+
     // Convert packet to CSV row
     const csvRow = packetToCSVRow(packet)
-    
-    // Check if file exists
-    const { data: existingFile, error: downloadError } = await supabase.storage
-      .from('radar-readings')
-      .download(filePath)
-    
+
     let csvContent: string
-    
-    if (existingFile) {
-      // Append to existing file
-      const existingContent = await existingFile.text()
-      csvContent = existingContent + '\n' + csvRow
-    } else {
-      // Create new file with header
-      const header = getCSVHeader()
-      csvContent = header + '\n' + csvRow
+
+    try {
+      // Try to get existing file
+      const getCommand = new GetObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: filePath,
+      });
+
+      const response = await s3Client.send(getCommand);
+      const existingContent = await response.Body?.transformToString();
+
+      if (existingContent) {
+        // Append to existing file
+        csvContent = existingContent + '\n' + csvRow;
+      } else {
+        // Create new file with header
+        const header = getCSVHeader();
+        csvContent = header + '\n' + csvRow;
+      }
+    } catch (error: any) {
+      // File doesn't exist, create new file with header
+      if (error.name === 'NoSuchKey' || error.$metadata?.httpStatusCode === 404) {
+        const header = getCSVHeader();
+        csvContent = header + '\n' + csvRow;
+      } else {
+        throw error;
+      }
     }
-    
+
     // Upload/update file
-    const { error: uploadError } = await supabase.storage
-      .from('radar-readings')
-      .upload(filePath, new Blob([csvContent], { type: 'text/csv' }), {
-        upsert: true,
-        contentType: 'text/csv'
-      })
-    
-    if (uploadError) {
-      console.error('Error uploading to Supabase storage:', uploadError)
-      throw uploadError
-    }
-    
+    const putCommand = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: filePath,
+      Body: csvContent,
+      ContentType: 'text/csv',
+    });
+
+    await s3Client.send(putCommand);
+
   } catch (error) {
     console.error('Error storing radar reading to CSV:', error)
     throw error
@@ -97,12 +114,12 @@ function packetToCSVRow(packet: RadarPacket): string {
     `"${JSON.stringify(packet.radar_targets).replace(/"/g, '""')}"`, // Escape quotes
     `"${JSON.stringify(packet.csi_data).replace(/"/g, '""')}"` // Escape quotes
   ]
-  
+
   return values.join(',')
 }
 
 /**
- * Retrieve CSV file from storage
+ * Retrieve CSV file from S3
  */
 export async function getCSVFile(
   buildingId: number,
@@ -110,18 +127,23 @@ export async function getCSVFile(
   date: string,
   hour: string
 ): Promise<string | null> {
-  const filePath = `${buildingId}/${roomId}/${date}/${hour.padStart(2, '0')}.csv`
-  
-  const { data, error } = await supabase.storage
-    .from('radar-readings')
-    .download(filePath)
-  
-  if (error) {
-    console.error('Error downloading from Supabase storage:', error)
-    return null
+  const filePath = `radar-readings/${buildingId}/${roomId}/${date}/${hour.padStart(2, '0')}.csv`
+
+  try {
+    const command = new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: filePath,
+    });
+
+    const response = await s3Client.send(command);
+    return await response.Body?.transformToString() || null;
+  } catch (error: any) {
+    if (error.name === 'NoSuchKey' || error.$metadata?.httpStatusCode === 404) {
+      return null;
+    }
+    console.error('Error downloading from S3:', error);
+    throw error;
   }
-  
-  return await data.text()
 }
 
 /**
@@ -132,16 +154,23 @@ export async function listCSVFilesForDate(
   roomId: number,
   date: string
 ): Promise<string[]> {
-  const prefix = `${buildingId}/${roomId}/${date}/`
-  
-  const { data, error } = await supabase.storage
-    .from('radar-readings')
-    .list(prefix)
-  
-  if (error) {
-    console.error('Error listing files from Supabase storage:', error)
-    return []
+  const prefix = `radar-readings/${buildingId}/${roomId}/${date}/`
+
+  try {
+    const command = new ListObjectsV2Command({
+      Bucket: BUCKET_NAME,
+      Prefix: prefix,
+    });
+
+    const response = await s3Client.send(command);
+
+    return response.Contents?.map(obj => {
+      // Extract just the filename from the full key
+      const parts = obj.Key?.split('/') || [];
+      return parts[parts.length - 1];
+    }).filter(Boolean) || [];
+  } catch (error) {
+    console.error('Error listing files from S3:', error);
+    return [];
   }
-  
-  return data?.map(file => file.name) || []
 }

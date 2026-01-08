@@ -36,10 +36,8 @@ EOF
 DATABASE_URL=$(aws ssm get-parameter --name "/${project_name}/DATABASE_URL" --with-decryption --query 'Parameter.Value' --output text --region ${aws_region} 2>/dev/null || echo "")
 DIRECT_URL=$(aws ssm get-parameter --name "/${project_name}/DIRECT_URL" --with-decryption --query 'Parameter.Value' --output text --region ${aws_region} 2>/dev/null || echo "")
 
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=$(aws ssm get-parameter --name "/${project_name}/NEXT_PUBLIC_SUPABASE_URL" --query 'Parameter.Value' --output text --region ${aws_region} 2>/dev/null || echo "")
-NEXT_PUBLIC_SUPABASE_ANON_KEY=$(aws ssm get-parameter --name "/${project_name}/NEXT_PUBLIC_SUPABASE_ANON_KEY" --query 'Parameter.Value' --output text --region ${aws_region} 2>/dev/null || echo "")
-SUPABASE_SERVICE_ROLE_KEY=$(aws ssm get-parameter --name "/${project_name}/SUPABASE_SERVICE_ROLE_KEY" --with-decryption --query 'Parameter.Value' --output text --region ${aws_region} 2>/dev/null || echo "")
+# AWS S3 Storage
+S3_BUCKET_NAME=$(aws ssm get-parameter --name "/${project_name}/S3_BUCKET_NAME" --query 'Parameter.Value' --output text --region ${aws_region} 2>/dev/null || echo "")
 
 # App config
 NEXT_PUBLIC_APP_URL=$(aws ssm get-parameter --name "/${project_name}/NEXT_PUBLIC_APP_URL" --query 'Parameter.Value' --output text --region ${aws_region} 2>/dev/null || echo "")
@@ -48,9 +46,8 @@ NEXT_PUBLIC_APP_URL=$(aws ssm get-parameter --name "/${project_name}/NEXT_PUBLIC
 {
     echo "DATABASE_URL=$DATABASE_URL"
     echo "DIRECT_URL=$DIRECT_URL"
-    echo "NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL"
-    echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY"
-    echo "SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY"
+    echo "AWS_REGION=${aws_region}"
+    echo "S3_BUCKET_NAME=$S3_BUCKET_NAME"
     echo "NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL"
     echo "NODE_ENV=production"
 } >> /home/ec2-user/.env
