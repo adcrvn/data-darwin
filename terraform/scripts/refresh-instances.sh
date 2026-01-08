@@ -9,8 +9,9 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-REGION=${AWS_REGION:-"us-east-1"}
+REGION=${AWS_REGION:-"us-east-2"}
 ASG_NAME="smarthome-radar-asg"
+AUTO_APPROVE=${1:-"false"}
 
 echo -e "${BLUE}======================================${NC}"
 echo -e "${BLUE}  ASG Instance Refresh Tool${NC}"
@@ -103,11 +104,15 @@ echo "  • To recover from unhealthy instances"
 echo ""
 
 # Confirm
-read -p "Trigger instance refresh for ASG '$ASG_NAME'? (y/n) " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo -e "${YELLOW}Cancelled${NC}"
-    exit 0
+if [ "$AUTO_APPROVE" != "--yes" ] && [ "$AUTO_APPROVE" != "-y" ]; then
+    read -p "Trigger instance refresh for ASG '$ASG_NAME'? (y/n) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        exit 0
+    fi
+else
+    echo -e "${GREEN}Auto-approving instance refresh...${NC}"
 fi
 
 # Start instance refresh

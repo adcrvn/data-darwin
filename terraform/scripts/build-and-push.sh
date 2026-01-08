@@ -8,7 +8,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
-REGION=${AWS_REGION:-"us-east-1"}
+REGION=${AWS_REGION:-"us-east-2"}
 REPOSITORY_NAME="smarthome-radar-api"
 IMAGE_TAG=${1:-"latest"}
 
@@ -27,10 +27,13 @@ echo -e "${YELLOW}Image Tag: $IMAGE_TAG${NC}"
 echo -e "${YELLOW}Logging in to ECR...${NC}"
 aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com"
 
-# Build Docker image
-echo -e "${YELLOW}Building Docker image...${NC}"
-cd ..
-docker build -t "$REPOSITORY_NAME:$IMAGE_TAG" .
+# Build Docker image for linux/amd64 (EC2 platform)
+echo -e "${YELLOW}Building Docker image for linux/amd64...${NC}"
+# Get script directory and navigate to project root
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$SCRIPT_DIR/../.."
+cd "$PROJECT_ROOT"
+docker build --platform linux/amd64 -t "$REPOSITORY_NAME:$IMAGE_TAG" .
 
 # Tag image for ECR
 docker tag "$REPOSITORY_NAME:$IMAGE_TAG" "$REPOSITORY_URL:$IMAGE_TAG"

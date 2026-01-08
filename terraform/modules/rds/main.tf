@@ -8,26 +8,21 @@ resource "aws_db_subnet_group" "main" {
   }
 }
 
-# DB Parameter Group
-resource "aws_db_parameter_group" "main" {
-  name   = "${var.project_name}-db-params"
-  family = var.db_parameter_group_family
+# DB Parameter Group - Using default parameter group to avoid configuration issues
+# resource "aws_db_parameter_group" "main" {
+#   name   = "${var.project_name}-db-params"
+#   family = var.db_parameter_group_family
 
-  # PostgreSQL recommended parameters for connection pooling
-  parameter {
-    name  = "max_connections"
-    value = var.max_connections
-  }
+#   # PostgreSQL recommended parameters for connection pooling
+#   parameter {
+#     name  = "max_connections"
+#     value = var.max_connections
+#   }
 
-  parameter {
-    name  = "shared_buffers"
-    value = "{DBInstanceClassMemory/32768}" # 25% of instance memory (default formula)
-  }
-
-  tags = {
-    Name = "${var.project_name}-db-params"
-  }
-}
+#   tags = {
+#     Name = "${var.project_name}-db-params"
+#   }
+# }
 
 # Security Group for RDS
 resource "aws_security_group" "rds" {
@@ -97,8 +92,8 @@ resource "aws_db_instance" "main" {
   performance_insights_enabled    = var.performance_insights_enabled
   performance_insights_retention_period = var.performance_insights_enabled ? 7 : null
 
-  # Parameter group
-  parameter_group_name = aws_db_parameter_group.main.name
+  # Parameter group - Using default
+  # parameter_group_name = aws_db_parameter_group.main.name
 
   # Enhanced monitoring
   monitoring_interval = var.monitoring_interval

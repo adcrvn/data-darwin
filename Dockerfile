@@ -22,11 +22,20 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Combine schema files (generated file, not in git)
+RUN node scripts/combine-schemas.js
+
 # Generate Prisma Client
-RUN npx prisma generate
+RUN npx prisma generate --schema=./prisma/combined-schema.prisma
 
 # Build Next.js app (standalone output for smaller image)
 ENV NEXT_TELEMETRY_DISABLED=1
+# Provide dummy env vars for build (actual values come from AWS SSM at runtime)
+ENV NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy_key
+ENV SUPABASE_SERVICE_ROLE_KEY=dummy_service_key
+ENV DATABASE_URL=postgresql://dummy:dummy@localhost:5432/dummy
+ENV DIRECT_URL=postgresql://dummy:dummy@localhost:5432/dummy
 RUN npm run build
 
 # Stage 3: Runner
@@ -43,14 +52,10 @@ RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
 # Copy necessary files from builder
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-
-# Set correct permissions
-RUN chown -R nextjs:nodejs /app
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 
 USER nextjs
 

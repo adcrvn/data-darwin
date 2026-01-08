@@ -10,7 +10,7 @@ NC='\033[0m' # No Color
 # Configuration
 BUCKET_NAME="smarthome-radar-terraform-state"
 DYNAMODB_TABLE="smarthome-radar-terraform-locks"
-REGION="us-east-1"
+REGION="us-east-2"
 
 echo -e "${GREEN}Setting up Terraform backend...${NC}"
 

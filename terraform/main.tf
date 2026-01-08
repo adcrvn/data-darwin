@@ -232,37 +232,30 @@ resource "aws_lb_target_group" "main" {
   }
 }
 
-# ALB Listener - HTTP
+# ALB Listener - HTTP (redirects to HTTPS)
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.main.arn
   port              = 80
   protocol          = "HTTP"
 
   default_action {
-    type = var.ssl_certificate_arn != "" ? "redirect" : "forward"
+    type = "redirect"
 
-    dynamic "redirect" {
-      for_each = var.ssl_certificate_arn != "" ? [1] : []
-      content {
-        port        = "443"
-        protocol    = "HTTPS"
-        status_code = "HTTP_301"
-      }
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
     }
-
-    target_group_arn = var.ssl_certificate_arn != "" ? null : aws_lb_target_group.main.arn
   }
 }
 
-# ALB Listener - HTTPS (optional, if SSL certificate is provided)
+# ALB Listener - HTTPS
 resource "aws_lb_listener" "https" {
-  count = var.ssl_certificate_arn != "" ? 1 : 0
-
   load_balancer_arn = aws_lb.main.arn
   port              = 443
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
-  certificate_arn   = var.ssl_certificate_arn
+  certificate_arn   = aws_acm_certificate_validation.wildcard.certificate_arn
 
   default_action {
     type             = "forward"

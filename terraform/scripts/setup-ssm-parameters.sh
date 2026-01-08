@@ -9,8 +9,8 @@ NC='\033[0m' # No Color
 
 # Configuration
 PROJECT_NAME="smarthome-radar"
-REGION="us-east-1"
-ENV_FILE="../.env"
+REGION="us-east-2"
+ENV_FILE="/Users/hugosamayoa/Development/CRVN/data-darwin/.env"
 
 echo -e "${GREEN}Setting up SSM Parameters from .env file...${NC}"
 

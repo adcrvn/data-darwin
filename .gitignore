@@ -41,6 +41,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# prisma generated files
+prisma/combined-schema.prisma
+
 # test binary files
 test-data/*.bin
 test-data/downloaded*.bin
