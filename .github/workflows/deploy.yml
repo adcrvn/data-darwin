@@ -45,6 +45,24 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
           echo "Image pushed: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
+      - name: Wait for any in-progress instance refresh
+        run: |
+          echo "Checking for in-progress instance refresh..."
+          while true; do
+            STATUS=$(aws autoscaling describe-instance-refreshes \
+              --auto-scaling-group-name $ASG_NAME \
+              --query 'InstanceRefreshes[0].Status' \
+              --output text 2>/dev/null || echo "None")
+
+            if [[ "$STATUS" == "Pending" || "$STATUS" == "InProgress" ]]; then
+              echo "Instance refresh in progress (status: $STATUS). Waiting 30s..."
+              sleep 30
+            else
+              echo "No in-progress instance refresh (status: $STATUS)"
+              break
+            fi
+          done
+
       - name: Trigger ASG instance refresh
         run: |
           REFRESH_ID=$(aws autoscaling start-instance-refresh \
