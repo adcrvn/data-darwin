@@ -1,17 +1,12 @@
-import { supabase } from './supabase-storage';
+import { S3Client, PutObjectCommand, GetObjectCommand, ListObjectsV2Command, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { generateOTAFilename, parseOTAMetadata } from '../utils/ota-parser';
 
-const BIN_BUCKET = 'binary-files';
+// S3 client configuration
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION || "us-east-2",
+});
 
-// Type for Supabase storage file object
-interface FileObject {
-  name: string;
-  id: string | null;
-  updated_at: string;
-  created_at: string;
-  last_accessed_at: string;
-  metadata: Record<string, any> | null;
-}
+const BUCKET_NAME = process.env.S3_BUCKET_NAME || "smarthome-radar-radar-data-802738533039";
 
 export interface BinFileMetadata {
   name: string;
@@ -24,7 +19,7 @@ export interface BinFileMetadata {
 }
 
 /**
- * Upload a binary file to Supabase storage
+ * Upload a binary file to S3 storage
  */
 export async function uploadBinFile(
   fileBuffer: Uint8Array | ArrayBuffer,
@@ -42,27 +37,30 @@ export async function uploadBinFile(
     } else {
       // Fallback to simple timestamp-based naming
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      fileName = originalName 
+      fileName = originalName
         ? `${timestamp}_${originalName}`
         : `${timestamp}.bin`;
     }
-    
-    const filePath = `uploads/${fileName}`;
 
-    const { data, error } = await supabase.storage
-      .from(BIN_BUCKET)
-      .upload(filePath, fileBuffer, {
-        contentType: 'application/octet-stream',
-        upsert: false,
-      });
+    const filePath = `binary-files/uploads/${fileName}`;
 
-    if (error) {
-      throw new Error(`Upload failed: ${error.message}`);
-    }
+    // Convert to Buffer if needed
+    const buffer = fileBuffer instanceof ArrayBuffer
+      ? Buffer.from(fileBuffer)
+      : Buffer.from(fileBuffer);
+
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: filePath,
+      Body: buffer,
+      ContentType: 'application/octet-stream',
+    });
+
+    await s3Client.send(command);
 
     return {
       success: true,
-      filePath: data.path,
+      filePath,
       fileName,
       metadata: otaMetadata,
     };
@@ -99,31 +97,40 @@ function parseFilenameMetadata(fileName: string): { version?: string; projectNam
  */
 export async function getLatestBinFile(): Promise<BinFileMetadata | null> {
   try {
-    const { data, error } = await supabase.storage
-      .from(BIN_BUCKET)
-      .list('uploads', {
-        limit: 1,
-        offset: 0,
-        sortBy: { column: 'created_at', order: 'desc' },
-      });
+    const command = new ListObjectsV2Command({
+      Bucket: BUCKET_NAME,
+      Prefix: 'binary-files/uploads/',
+    });
 
-    if (error) {
-      throw new Error(`Failed to list files: ${error.message}`);
-    }
+    const response = await s3Client.send(command);
 
-    if (!data || data.length === 0) {
+    if (!response.Contents || response.Contents.length === 0) {
       return null;
     }
 
-    const file = data[0];
-    const filenameMetadata = parseFilenameMetadata(file.name);
-    
+    // Sort by LastModified descending
+    const sortedFiles = response.Contents
+      .filter(obj => obj.Key && obj.Key !== 'binary-files/uploads/') // Filter out the folder itself
+      .sort((a, b) => {
+        const timeA = a.LastModified?.getTime() || 0;
+        const timeB = b.LastModified?.getTime() || 0;
+        return timeB - timeA;
+      });
+
+    if (sortedFiles.length === 0) {
+      return null;
+    }
+
+    const file = sortedFiles[0];
+    const fileName = file.Key?.split('/').pop() || '';
+    const filenameMetadata = parseFilenameMetadata(fileName);
+
     return {
-      name: file.name,
-      path: `uploads/${file.name}`,
-      size: file.metadata?.size || 0,
-      created_at: file.created_at,
-      updated_at: file.updated_at,
+      name: fileName,
+      path: file.Key || '',
+      size: file.Size || 0,
+      created_at: file.LastModified?.toISOString() || new Date().toISOString(),
+      updated_at: file.LastModified?.toISOString() || new Date().toISOString(),
       ...filenameMetadata,
     };
   } catch (error) {
@@ -137,24 +144,39 @@ export async function getLatestBinFile(): Promise<BinFileMetadata | null> {
  */
 export async function getBinFileByName(fileName: string): Promise<Uint8Array | null> {
   try {
-    const filePath = fileName.startsWith('uploads/') 
-      ? fileName 
-      : `uploads/${fileName}`;
+    const filePath = fileName.startsWith('binary-files/uploads/')
+      ? fileName
+      : `binary-files/uploads/${fileName}`;
 
-    const { data, error } = await supabase.storage
-      .from(BIN_BUCKET)
-      .download(filePath);
+    const command = new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: filePath,
+    });
 
-    if (error) {
-      throw new Error(`Download failed: ${error.message}`);
-    }
+    const response = await s3Client.send(command);
 
-    if (!data) {
+    if (!response.Body) {
       return null;
     }
 
-    return new Uint8Array(await data.arrayBuffer());
-  } catch (error) {
+    // Convert stream to Uint8Array
+    const chunks: Uint8Array[] = [];
+    for await (const chunk of response.Body as any) {
+      chunks.push(chunk);
+    }
+    const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+    const result = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const chunk of chunks) {
+      result.set(chunk, offset);
+      offset += chunk.length;
+    }
+
+    return result;
+  } catch (error: any) {
+    if (error.name === 'NoSuchKey' || error.$metadata?.httpStatusCode === 404) {
+      return null;
+    }
     console.error('Error downloading bin file:', error);
     throw error;
   }
@@ -168,27 +190,39 @@ export async function listBinFiles(
   offset: number = 0
 ): Promise<BinFileMetadata[]> {
   try {
-    const { data, error } = await supabase.storage
-      .from(BIN_BUCKET)
-      .list('uploads', {
-        limit,
-        offset,
-        sortBy: { column: 'created_at', order: 'desc' },
-      });
+    const command = new ListObjectsV2Command({
+      Bucket: BUCKET_NAME,
+      Prefix: 'binary-files/uploads/',
+    });
 
-    if (error) {
-      throw new Error(`Failed to list files: ${error.message}`);
+    const response = await s3Client.send(command);
+
+    if (!response.Contents || response.Contents.length === 0) {
+      return [];
     }
 
-    return (data || []).map((file: FileObject) => {
-      const filenameMetadata = parseFilenameMetadata(file.name);
-      
+    // Filter out the folder itself and sort by LastModified descending
+    const sortedFiles = response.Contents
+      .filter(obj => obj.Key && obj.Key !== 'binary-files/uploads/')
+      .sort((a, b) => {
+        const timeA = a.LastModified?.getTime() || 0;
+        const timeB = b.LastModified?.getTime() || 0;
+        return timeB - timeA;
+      });
+
+    // Apply offset and limit
+    const paginatedFiles = sortedFiles.slice(offset, offset + limit);
+
+    return paginatedFiles.map(file => {
+      const fileName = file.Key?.split('/').pop() || '';
+      const filenameMetadata = parseFilenameMetadata(fileName);
+
       return {
-        name: file.name,
-        path: `uploads/${file.name}`,
-        size: file.metadata?.size || 0,
-        created_at: file.created_at,
-        updated_at: file.updated_at,
+        name: fileName,
+        path: file.Key || '',
+        size: file.Size || 0,
+        created_at: file.LastModified?.toISOString() || new Date().toISOString(),
+        updated_at: file.LastModified?.toISOString() || new Date().toISOString(),
         ...filenameMetadata,
       };
     });
@@ -203,17 +237,16 @@ export async function listBinFiles(
  */
 export async function deleteBinFile(fileName: string): Promise<boolean> {
   try {
-    const filePath = fileName.startsWith('uploads/') 
-      ? fileName 
-      : `uploads/${fileName}`;
+    const filePath = fileName.startsWith('binary-files/uploads/')
+      ? fileName
+      : `binary-files/uploads/${fileName}`;
 
-    const { error } = await supabase.storage
-      .from(BIN_BUCKET)
-      .remove([filePath]);
+    const command = new DeleteObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: filePath,
+    });
 
-    if (error) {
-      throw new Error(`Delete failed: ${error.message}`);
-    }
+    await s3Client.send(command);
 
     return true;
   } catch (error) {

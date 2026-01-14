@@ -4,19 +4,20 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "prebuild": "node scripts/combine-schemas.js",
+    "build": "prisma generate --schema=./prisma/combined-schema.prisma && next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "prisma generate",
-    "db:generate": "prisma generate",
-    "db:push": "prisma db push",
-    "db:studio": "prisma studio",
-    "db:migrate": "prisma migrate dev",
-    "db:migrate:deploy": "prisma migrate deploy"
+    "postinstall": "node scripts/combine-schemas.js && prisma generate --schema=./prisma/combined-schema.prisma",
+    "db:generate": "node scripts/combine-schemas.js && prisma generate --schema=./prisma/combined-schema.prisma",
+    "db:push": "node scripts/combine-schemas.js && prisma db push --schema=./prisma/combined-schema.prisma",
+    "db:studio": "node scripts/combine-schemas.js && prisma studio --schema=./prisma/combined-schema.prisma",
+    "db:migrate": "node scripts/combine-schemas.js && prisma migrate dev --schema=./prisma/combined-schema.prisma",
+    "db:migrate:deploy": "node scripts/combine-schemas.js && prisma migrate deploy --schema=./prisma/combined-schema.prisma"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.709.0",
     "@prisma/client": "^6.15.0",
-    "@supabase/supabase-js": "^2.56.1",
     "next": "^16.0.7",
     "prisma": "^6.15.0",
     "react": "19.1.0",
