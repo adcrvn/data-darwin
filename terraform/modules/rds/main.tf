@@ -39,6 +39,18 @@ resource "aws_security_group" "rds" {
     security_groups = var.allowed_security_groups
   }
 
+  # Allow PostgreSQL from NLB (external access via non-standard port)
+  dynamic "ingress" {
+    for_each = length(var.nlb_allowed_cidr_blocks) > 0 ? [1] : []
+    content {
+      description = "PostgreSQL from NLB (external)"
+      from_port   = 5432
+      to_port     = 5432
+      protocol    = "tcp"
+      cidr_blocks = var.nlb_allowed_cidr_blocks
+    }
+  }
+
   # No egress rules needed for RDS (inbound only)
   egress {
     description = "Allow all outbound"

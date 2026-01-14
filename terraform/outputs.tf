@@ -103,3 +103,23 @@ output "s3_bucket_arn" {
   description = "S3 bucket ARN"
   value       = aws_s3_bucket.radar_data.arn
 }
+
+# ==================== NLB for External RDS Access ====================
+
+output "rds_nlb_dns_name" {
+  description = "NLB DNS name for external RDS access (use port 15432)"
+  value       = aws_lb.rds_nlb.dns_name
+}
+
+output "rds_external_connection_string" {
+  description = "Connection string for external RDS access via NLB (use port 15432)"
+  value       = "postgresql://${module.rds.db_master_username}@${aws_lb.rds_nlb.dns_name}:15432/${var.db_name}"
+  sensitive   = true
+}
+
+# ==================== GitHub Actions CI/CD ====================
+
+output "github_actions_role_arn" {
+  description = "IAM role ARN for GitHub Actions OIDC authentication"
+  value       = aws_iam_role.github_actions.arn
+}

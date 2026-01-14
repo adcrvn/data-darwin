@@ -164,3 +164,10 @@ variable "replica_instance_class" {
   type        = string
   default     = ""
 }
+
+# External Access via NLB
+variable "nlb_allowed_cidr_blocks" {
+  description = "CIDR blocks allowed to access RDS via NLB (external access)"
+  type        = list(string)
+  default     = []
+}

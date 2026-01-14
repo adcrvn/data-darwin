@@ -1,6 +1,11 @@
 # Get current AWS account ID
 data "aws_caller_identity" "current" {}
 
+# Resolve RDS hostname to IP for NLB target
+data "dns_a_record_set" "rds" {
+  host = module.rds.db_instance_address
+}
+
 # Get latest Amazon Linux 2023 AMI
 data "aws_ami" "amazon_linux_2023" {
   most_recent = true
@@ -75,6 +80,9 @@ module "rds" {
 
   # Read Replica
   create_read_replica = var.db_create_read_replica
+
+  # External Access via NLB (allow all IPs since NLB uses non-standard port 15432)
+  nlb_allowed_cidr_blocks = ["0.0.0.0/0"]
 }
 
 # ECR Repository
@@ -354,4 +362,142 @@ resource "aws_autoscaling_group" "main" {
   lifecycle {
     create_before_destroy = true
   }
+}
+
+# ==================== NLB for External RDS Access ====================
+
+# Network Load Balancer for RDS external access
+resource "aws_lb" "rds_nlb" {
+  name               = "${var.project_name}-rds-nlb"
+  internal           = false
+  load_balancer_type = "network"
+  subnets            = module.vpc.public_subnet_ids
+
+  enable_deletion_protection = false
+
+  tags = {
+    Name = "${var.project_name}-rds-nlb"
+  }
+}
+
+# Target Group for RDS (IP type since RDS doesn't have instance IDs)
+resource "aws_lb_target_group" "rds" {
+  name        = "${var.project_name}-rds-tg"
+  port        = 5432
+  protocol    = "TCP"
+  vpc_id      = module.vpc.vpc_id
+  target_type = "ip"
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 3
+    unhealthy_threshold = 3
+    interval            = 30
+    protocol            = "TCP"
+    port                = "traffic-port"
+  }
+
+  tags = {
+    Name = "${var.project_name}-rds-tg"
+  }
+}
+
+# Register RDS IP as target
+resource "aws_lb_target_group_attachment" "rds" {
+  target_group_arn = aws_lb_target_group.rds.arn
+  target_id        = data.dns_a_record_set.rds.addrs[0]
+  port             = 5432
+}
+
+# NLB Listener on port 15432 (non-standard to avoid security scanners)
+resource "aws_lb_listener" "rds" {
+  load_balancer_arn = aws_lb.rds_nlb.arn
+  port              = 15432
+  protocol          = "TCP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.rds.arn
+  }
+}
+
+# ==================== GitHub Actions CI/CD ====================
+
+# GitHub Actions OIDC Provider
+resource "aws_iam_openid_connect_provider" "github" {
+  url             = "https://token.actions.githubusercontent.com"
+  client_id_list  = ["sts.amazonaws.com"]
+  thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1", "1c58a3a8518e8759bf075b76b750d4f2df264fcd"]
+
+  tags = {
+    Name = "${var.project_name}-github-oidc"
+  }
+}
+
+# IAM Role for GitHub Actions
+resource "aws_iam_role" "github_actions" {
+  name = "${var.project_name}-github-actions-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Federated = aws_iam_openid_connect_provider.github.arn
+      }
+      Action = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+        }
+        StringLike = {
+          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:*"
+        }
+      }
+    }]
+  })
+
+  tags = {
+    Name = "${var.project_name}-github-actions-role"
+  }
+}
+
+# Policy for ECR push and ASG refresh
+resource "aws_iam_role_policy" "github_actions" {
+  name = "${var.project_name}-github-actions-policy"
+  role = aws_iam_role.github_actions.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:GetAuthorizationToken"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+          "ecr:PutImage",
+          "ecr:InitiateLayerUpload",
+          "ecr:UploadLayerPart",
+          "ecr:CompleteLayerUpload"
+        ]
+        Resource = aws_ecr_repository.app.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "autoscaling:StartInstanceRefresh",
+          "autoscaling:DescribeInstanceRefreshes"
+        ]
+        Resource = aws_autoscaling_group.main.arn
+      }
+    ]
+  })
 }

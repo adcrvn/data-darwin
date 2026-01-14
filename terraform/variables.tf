@@ -173,3 +173,11 @@ variable "db_create_read_replica" {
   type        = bool
   default     = false
 }
+
+# ==================== GitHub Actions CI/CD ====================
+
+variable "github_repo" {
+  description = "GitHub repository in format owner/repo for OIDC authentication"
+  type        = string
+  default     = "CRVN/data-darwin"
+}
