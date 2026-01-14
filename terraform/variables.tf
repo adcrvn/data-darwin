@@ -179,5 +179,5 @@ variable "db_create_read_replica" {
 variable "github_repo" {
   description = "GitHub repository in format owner/repo for OIDC authentication"
   type        = string
-  default     = "CRVN/data-darwin"
+  default     = "adcrvn/data-darwin"
 }
