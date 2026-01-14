@@ -493,8 +493,14 @@ resource "aws_iam_role_policy" "github_actions" {
       {
         Effect = "Allow"
         Action = [
-          "autoscaling:StartInstanceRefresh",
           "autoscaling:DescribeInstanceRefreshes"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "autoscaling:StartInstanceRefresh"
         ]
         Resource = aws_autoscaling_group.main.arn
       }
