@@ -297,7 +297,7 @@ resource "aws_launch_template" "main" {
     device_name = "/dev/xvda"
 
     ebs {
-      volume_size           = 20  # GB - increased from default 8GB for Docker images
+      volume_size           = 200 # GB - increased from default 8GB for Docker images
       volume_type           = "gp3"
       delete_on_termination = true
       encrypted             = true
@@ -307,7 +307,7 @@ resource "aws_launch_template" "main" {
   metadata_options {
     http_endpoint               = "enabled"
     http_tokens                 = "required"
-    http_put_response_hop_limit = 2  # Allow Docker containers to access IMDS
+    http_put_response_hop_limit = 2 # Allow Docker containers to access IMDS
   }
 
   monitoring {
@@ -331,10 +331,10 @@ resource "aws_launch_template" "main" {
 
 # Auto Scaling Group
 resource "aws_autoscaling_group" "main" {
-  name                = "${var.project_name}-asg"
-  vpc_zone_identifier = module.vpc.private_subnet_ids
-  target_group_arns   = [aws_lb_target_group.main.arn]
-  health_check_type   = "ELB"
+  name                      = "${var.project_name}-asg"
+  vpc_zone_identifier       = module.vpc.private_subnet_ids
+  target_group_arns         = [aws_lb_target_group.main.arn]
+  health_check_type         = "ELB"
   health_check_grace_period = 300
 
   min_size         = var.asg_min_size
