@@ -1,0 +1,11 @@
+model Room {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  building_id String   @db.Uuid
+
+  building      Building    @relation(fields: [building_id], references: [id], onDelete: Cascade)
+  inferenceData InferenceData[]
+
+  @@index([building_id])
+  @@map("rooms")
+}

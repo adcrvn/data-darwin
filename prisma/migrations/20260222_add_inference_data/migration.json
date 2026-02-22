@@ -1,0 +1,19 @@
+{
+  "version": "6.19.0",
+  "steps": [
+    {
+      "action": "CreateTable",
+      "table": "inference_data",
+      "columns": [
+        { "name": "id", "type": "Uuid", "isNullable": false },
+        { "name": "timestamp_start", "type": "DateTime", "isNullable": false },
+        { "name": "timestamp_end", "type": "DateTime", "isNullable": false },
+        { "name": "room_id", "type": "Uuid", "isNullable": false },
+        { "name": "building_id", "type": "Uuid", "isNullable": false },
+        { "name": "occupied", "type": "Boolean", "isNullable": false },
+        { "name": "occupied_probability", "type": "Float", "isNullable": false },
+        { "name": "rx_mac", "type": "Text", "isNullable": false }
+      ]
+    }
+  ]
+}

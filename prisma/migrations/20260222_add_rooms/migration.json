@@ -1,0 +1,14 @@
+{
+  "version": "6.19.0",
+  "steps": [
+    {
+      "action": "CreateTable",
+      "table": "rooms",
+      "columns": [
+        { "name": "id", "type": "Uuid", "isNullable": false },
+        { "name": "name", "type": "Text", "isNullable": false },
+        { "name": "building_id", "type": "Uuid", "isNullable": false }
+      ]
+    }
+  ]
+}

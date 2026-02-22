@@ -1,0 +1,19 @@
+model InferenceData {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  timestamp_start      DateTime @db.Timestamptz(6)
+  timestamp_end        DateTime @db.Timestamptz(6)
+  room_id              String   @db.Uuid
+  building_id          String   @db.Uuid
+  occupied             Boolean
+  occupied_probability Float
+  rx_mac               String
+
+  room     Room     @relation(fields: [room_id], references: [id], onDelete: Cascade)
+  building Building @relation(fields: [building_id], references: [id], onDelete: Cascade)
+
+  @@index([room_id])
+  @@index([building_id])
+  @@index([rx_mac])
+  @@index([timestamp_start])
+  @@map("inference_data")
+}

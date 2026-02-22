@@ -1,0 +1,13 @@
+{
+  "version": "6.19.0",
+  "steps": [
+    {
+      "action": "CreateTable",
+      "table": "buildings",
+      "columns": [
+        { "name": "id", "type": "Uuid", "isNullable": false },
+        { "name": "name", "type": "Text", "isNullable": false }
+      ]
+    }
+  ]
+}
