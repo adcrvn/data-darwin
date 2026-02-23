@@ -1,7 +1,7 @@
 model Room {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id          Int    @id @default(autoincrement())
   name        String
-  building_id String   @db.Uuid
+  building_id Int
 
   building      Building    @relation(fields: [building_id], references: [id], onDelete: Cascade)
   inferenceData InferenceData[]

@@ -5,7 +5,7 @@
       "action": "CreateTable",
       "table": "buildings",
       "columns": [
-        { "name": "id", "type": "Uuid", "isNullable": false },
+        { "name": "id", "type": "Int", "isNullable": false },
         { "name": "name", "type": "Text", "isNullable": false }
       ]
     }

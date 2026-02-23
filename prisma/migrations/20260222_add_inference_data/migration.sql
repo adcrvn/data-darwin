@@ -1,10 +1,10 @@
--- CreateTable inference_data
+-- CreateTable inference_data with integer FKs to rooms/buildings
 CREATE TABLE IF NOT EXISTS "inference_data" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "timestamp_start" TIMESTAMPTZ(6) NOT NULL,
     "timestamp_end" TIMESTAMPTZ(6) NOT NULL,
-    "room_id" UUID NOT NULL,
-    "building_id" UUID NOT NULL,
+    "room_id" INTEGER NOT NULL,
+    "building_id" INTEGER NOT NULL,
     "occupied" BOOLEAN NOT NULL,
     "occupied_probability" DOUBLE PRECISION NOT NULL,
     "rx_mac" TEXT NOT NULL,

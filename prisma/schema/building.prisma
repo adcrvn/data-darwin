@@ -1,5 +1,5 @@
 model Building {
-  id   String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id   Int    @id @default(autoincrement())
   name String
 
   rooms         Room[]

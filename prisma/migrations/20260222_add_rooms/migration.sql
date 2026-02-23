@@ -1,9 +1,8 @@
--- CreateTable rooms
+-- CreateTable rooms with integer PK/FK
 CREATE TABLE IF NOT EXISTS "rooms" (
-    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+    "id" SERIAL PRIMARY KEY,
     "name" TEXT NOT NULL,
-    "building_id" UUID NOT NULL,
-    CONSTRAINT "rooms_pkey" PRIMARY KEY ("id"),
+    "building_id" INTEGER NOT NULL,
     CONSTRAINT "rooms_building_id_fkey" FOREIGN KEY ("building_id") REFERENCES "buildings"("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
