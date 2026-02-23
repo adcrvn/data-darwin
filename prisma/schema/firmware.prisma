@@ -1,0 +1,19 @@
+enum DeviceType {
+  transmitter
+  receiver
+}
+
+model Firmware {
+  id            Int        @id @default(autoincrement())
+  device_type   DeviceType
+  version       String
+  s3_key        String
+  size          Int
+  release_notes String?
+  is_latest     Boolean    @default(false)
+  created_at    DateTime   @default(now()) @db.Timestamptz(6)
+
+  @@index([device_type])
+  @@index([is_latest])
+  @@map("firmware")
+}

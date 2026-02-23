@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.709.0",
+    "@aws-sdk/s3-request-presigner": "^3.709.0",
     "@prisma/client": "^6.15.0",
     "dotenv": "^17.2.3",
     "express": "^4.19.2",

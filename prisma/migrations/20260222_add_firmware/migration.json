@@ -1,0 +1,24 @@
+{
+  "version": "6.19.0",
+  "steps": [
+    {
+      "action": "CreateEnum",
+      "name": "DeviceType",
+      "values": ["transmitter", "receiver"]
+    },
+    {
+      "action": "CreateTable",
+      "table": "firmware",
+      "columns": [
+        { "name": "id", "type": "Int", "isNullable": false },
+        { "name": "device_type", "type": "Enum", "enum": "DeviceType", "isNullable": false },
+        { "name": "version", "type": "Text", "isNullable": false },
+        { "name": "s3_key", "type": "Text", "isNullable": false },
+        { "name": "size", "type": "Int", "isNullable": false },
+        { "name": "release_notes", "type": "Text", "isNullable": true },
+        { "name": "is_latest", "type": "Boolean", "isNullable": false },
+        { "name": "created_at", "type": "DateTime", "isNullable": false }
+      ]
+    }
+  ]
+}
